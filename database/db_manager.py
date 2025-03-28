@@ -61,26 +61,70 @@ class DatabaseManager:
     
     def setup_database(self):
         """Configura o banco de dados com o schema inicial"""
-        # Lê o arquivo de schema
+        # Lê o arquivo de schema principal
         schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')
         try:
             with open(schema_path, 'r', encoding='utf-8') as f:
                 schema = f.read()
             
-            # Executa o schema
+            # Executa o schema principal
             self.cursor.executescript(schema)
             self.connection.commit()
-            print("Banco de dados configurado com sucesso.")
+            print("Schema principal configurado com sucesso.")
+            
+            # Configura o schema de usuários
+            self.setup_usuarios_schema()
             
             # Verifica se precisa criar dados de exemplo
             count = self.execute("SELECT COUNT(*) FROM territorios").fetchone()[0]
             if count == 0:
                 self._criar_dados_exemplo()
             
+            # Cria um usuário administrador padrão se não existir
+            count = self.execute("SELECT COUNT(*) FROM usuarios").fetchone()
+            if count and count[0] == 0:
+                self._criar_usuario_admin()
+            
             return True
         except Exception as e:
             print(f"Erro ao configurar banco de dados: {e}")
             return False
+    
+    def setup_usuarios_schema(self):
+        """Configura o schema para usuários, logs e notificações"""
+        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema_usuarios.sql')
+        try:
+            with open(schema_path, 'r', encoding='utf-8') as f:
+                schema = f.read()
+            
+            # Executa o schema de usuários
+            self.cursor.executescript(schema)
+            self.connection.commit()
+            print("Schema de usuários configurado com sucesso.")
+            return True
+        except Exception as e:
+            print(f"Erro ao configurar schema de usuários: {e}")
+            return False
+    
+    def _criar_usuario_admin(self):
+        """Cria o usuário administrador padrão"""
+        from models.usuario import Usuario
+        
+        print("Criando usuário administrador padrão...")
+        
+        admin = Usuario(
+            nome="Administrador",
+            email="admin@sistema.local",
+            nivel_permissao=Usuario.NIVEL_ADMIN,
+            ativo=True
+        )
+        # Senha padrão: "admin123" (deve ser alterada no primeiro acesso)
+        admin.definir_senha("admin123")
+        
+        if admin.save(self):
+            print("Usuário administrador criado com sucesso.")
+        else:
+            print("Erro ao criar usuário administrador.")
     
     def _criar_dados_exemplo(self):
         """Cria dados de exemplo para o banco de dados"""

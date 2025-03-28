@@ -102,7 +102,57 @@ CREATE TABLE IF NOT EXISTS designacoes_predios_vilas (
     FOREIGN KEY (imovel_id) REFERENCES imoveis(id) ON DELETE CASCADE,
     FOREIGN KEY (saida_campo_id) REFERENCES saidas_campo(id) ON DELETE CASCADE
 );
+-- Schema para as novas tabelas de usuários, log de atividades e notificações
 
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    senha_hash TEXT NOT NULL,
+    nivel_permissao INTEGER NOT NULL DEFAULT 1, -- 1: básico, 2: gestor, 3: admin
+    ativo INTEGER NOT NULL DEFAULT 1,
+    data_criacao TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índice para busca por email
+CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+
+-- Tabela de log de atividades
+CREATE TABLE IF NOT EXISTS log_atividades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    tipo_acao TEXT NOT NULL, -- 'login', 'logout', 'criar', 'editar', 'excluir', 'visualizar'
+    descricao TEXT NOT NULL,
+    data_hora TEXT DEFAULT CURRENT_TIMESTAMP,
+    entidade TEXT, -- tipo de entidade (território, designação, etc.)
+    entidade_id INTEGER, -- id da entidade, se aplicável
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+
+-- Tabela de notificações
+CREATE TABLE IF NOT EXISTS notificacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL, -- 'info', 'alerta', 'erro'
+    titulo TEXT NOT NULL,
+    mensagem TEXT NOT NULL,
+    status TEXT NOT NULL, -- 'nao_lida', 'lida', 'arquivada'
+    data_criacao TEXT DEFAULT CURRENT_TIMESTAMP,
+    data_leitura TEXT,
+    link TEXT, -- link/ação relacionada à notificação
+    entidade TEXT, -- tipo de entidade relacionada
+    entidade_id INTEGER, -- id da entidade, se aplicável
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+-- Índices para consultas frequentes
+CREATE INDEX IF NOT EXISTS idx_log_usuario_id ON log_atividades(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_log_data_hora ON log_atividades(data_hora);
+-- Índices para notificações
+CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_id ON notificacoes(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_notificacoes_status ON notificacoes(status);
 -- Índices para melhorar performance
 CREATE INDEX IF NOT EXISTS idx_ruas_territorio_id ON ruas(territorio_id);
 CREATE INDEX IF NOT EXISTS idx_imoveis_rua_id ON imoveis(rua_id);
